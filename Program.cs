@@ -21,6 +21,27 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-// Endpoints da API serão adicionados aqui.
+// Endpoint para buscar todos os veículos
+app.MapGet("/vehicles", async (ApplicationDbContext context) =>
+{
+    var vehicles = await context.Vehicles.ToListAsync();
+    return Results.Ok(vehicles);
+});
+
+// Endpoint para buscar um veículo por ID
+app.MapGet("/vehicles/{id}", async (int id, ApplicationDbContext context) =>
+{
+    // FindAsync é otimizado para buscar pela chave primária
+    var vehicle = await context.Vehicles.FindAsync(id);
+
+    if (vehicle is null)
+    {
+        // Retorna um 404 Not Found se o veículo não for encontrado
+        return Results.NotFound(new { Message = $"Veículo com ID {id}, não foi encontrado." });
+    }
+
+    // Retorna um 200 OK com o veículo encontrado
+    return Results.Ok(vehicle);
+});
 
 app.Run();

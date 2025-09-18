@@ -131,3 +131,4 @@
 /home/arthur/programacao/dotnet/VehicleRegistryAPI/obj/Debug/net9.0/VehicleRegistryAPI.pdb
 /home/arthur/programacao/dotnet/VehicleRegistryAPI/obj/Debug/net9.0/VehicleRegistryAPI.genruntimeconfig.cache
 /home/arthur/programacao/dotnet/VehicleRegistryAPI/obj/Debug/net9.0/ref/VehicleRegistryAPI.dll
+/home/arthur/programacao/dotnet/VehicleRegistryAPI/obj/Debug/net9.0/VehicleRegistryAPI.sourcelink.json
