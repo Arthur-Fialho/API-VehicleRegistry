@@ -132,3 +132,11 @@
 /home/arthur/programacao/dotnet/VehicleRegistryAPI/obj/Debug/net9.0/VehicleRegistryAPI.genruntimeconfig.cache
 /home/arthur/programacao/dotnet/VehicleRegistryAPI/obj/Debug/net9.0/ref/VehicleRegistryAPI.dll
 /home/arthur/programacao/dotnet/VehicleRegistryAPI/obj/Debug/net9.0/VehicleRegistryAPI.sourcelink.json
+/home/arthur/programacao/dotnet/VehicleRegistryAPI/bin/Debug/net9.0/Microsoft.AspNetCore.Authentication.JwtBearer.dll
+/home/arthur/programacao/dotnet/VehicleRegistryAPI/bin/Debug/net9.0/Microsoft.IdentityModel.Abstractions.dll
+/home/arthur/programacao/dotnet/VehicleRegistryAPI/bin/Debug/net9.0/Microsoft.IdentityModel.JsonWebTokens.dll
+/home/arthur/programacao/dotnet/VehicleRegistryAPI/bin/Debug/net9.0/Microsoft.IdentityModel.Logging.dll
+/home/arthur/programacao/dotnet/VehicleRegistryAPI/bin/Debug/net9.0/Microsoft.IdentityModel.Protocols.dll
+/home/arthur/programacao/dotnet/VehicleRegistryAPI/bin/Debug/net9.0/Microsoft.IdentityModel.Protocols.OpenIdConnect.dll
+/home/arthur/programacao/dotnet/VehicleRegistryAPI/bin/Debug/net9.0/Microsoft.IdentityModel.Tokens.dll
+/home/arthur/programacao/dotnet/VehicleRegistryAPI/bin/Debug/net9.0/System.IdentityModel.Tokens.Jwt.dll

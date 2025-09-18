@@ -15,4 +15,5 @@ public class ApplicationDbContext : DbContext
 
     // Cria uma tabela chamada 'Vehicles' do tipo 'Vehicle' no banco de dados
     public DbSet<Vehicle> Vehicles { get; set; }
+    public DbSet<User> Users { get; set; }
 }
