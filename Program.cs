@@ -5,6 +5,9 @@ using VehicleRegistryAPI.Models;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using VehicleRegistryAPI.Services;
+using VehicleRegistryAPI.Services;
+using Microsoft.AspNetCore.Mvc;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -31,8 +34,17 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddAuthorization();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddScoped<TokenService>();
 
 var app = builder.Build();
+
+// Seed da base de dados
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    var context = services.GetRequiredService<ApplicationDbContext>();
+    DataSeeder.Seed(context);
+}
 
 // Configuração do pipeline de requisições HTTP.
 if (app.Environment.IsDevelopment())
@@ -120,6 +132,20 @@ app.MapDelete("/vehicles/{id}", async (int id, ApplicationDbContext context) =>
 
     // Retorna um status 204 No Content, o padrão para um delete bem-sucedido
     return Results.NoContent();
+});
+
+app.MapPost("/login", async ([FromBody] LoginRequestDto loginDto, ApplicationDbContext context, TokenService tokenService) =>
+{
+    var user = await context.Users.FirstOrDefaultAsync(u => u.Username == loginDto.Username);
+
+    if (user == null || !BCrypt.Net.BCrypt.Verify(loginDto.Password, user.PasswordHash))
+    {
+        return Results.Unauthorized();
+    }
+
+    var token = tokenService.GenerateToken(user);
+
+    return Results.Ok(new LoginResponseDto(token));
 });
 
 app.Run();
