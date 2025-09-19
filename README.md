@@ -122,10 +122,13 @@ Todos os endpoints, exceto `/login`, são protegidos e exigem um token JWT no ca
 
 ## ✅ Testes
 
-O projeto inclui uma suíte de testes automatizados. Para os executar:
+A solução inclui um projeto dedicado (`VehicleRegistryAPI.Tests`) com testes de unidade e persistência.
+
+Para executar todos os testes a partir da raiz da solução, use o comando:
 ```bash
 dotnet test
 ```
+Você deverá ver uma saída a indicar que todos os testes passaram com sucesso.
 
 ---
 
