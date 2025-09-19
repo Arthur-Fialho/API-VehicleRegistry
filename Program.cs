@@ -75,6 +75,9 @@ builder.Services.AddSwaggerGen(options =>
 // Regista o TokenService para injeção de dependência
 builder.Services.AddScoped<TokenService>();
 
+// Regista o VehicleService para injeção de dependência
+builder.Services.AddScoped<IVehicleService, VehicleService>();
+
 var app = builder.Build();
 
 // Seed da base de dados
@@ -100,57 +103,44 @@ app.UseAuthorization();
 var vehicleEndpoints = app.MapGroup("/vehicles").RequireAuthorization();
 
 // GET (Leitura) - Acessível a qualquer utilizador autenticado (Editor ou Administrator)
-vehicleEndpoints.MapGet("/", async (ApplicationDbContext context) =>
+vehicleEndpoints.MapGet("/", async (IVehicleService service) =>
 {
-    var vehicles = await context.Vehicles.ToListAsync();
+    var vehicles = await service.GetAll();
     return Results.Ok(vehicles);
 });
 
 // GET by ID (Leitura) - Acessível a qualquer utilizador autenticado (Editor ou Administrator)
-vehicleEndpoints.MapGet("/{id}", async (int id, ApplicationDbContext context) =>
+vehicleEndpoints.MapGet("/{id}", async (int id, IVehicleService service) =>
 {
-    var vehicle = await context.Vehicles.FindAsync(id);
+    var vehicle = await service.GetById(id);
     return vehicle is not null ? Results.Ok(vehicle) : Results.NotFound();
 });
 
 // POST (Criação) - Acessível a qualquer utilizador autenticado (Editor ou Administrator)
-vehicleEndpoints.MapPost("/", async (CreateVehicleDto vehicleDto, ApplicationDbContext context) =>
+vehicleEndpoints.MapPost("/", async (CreateVehicleDto vehicleDto, IVehicleService service) =>
 {
-    var vehicle = new Vehicle
-    {
-        Make = vehicleDto.Make,
-        Model = vehicleDto.Model,
-        Year = vehicleDto.Year,
-        LicensePlate = vehicleDto.LicensePlate
-    };
-    await context.Vehicles.AddAsync(vehicle);
-    await context.SaveChangesAsync();
+    var vehicle = await service.Create(vehicleDto);
+
     return Results.Created($"/vehicles/{vehicle.Id}", vehicle);
 });
 
-// PUT (Atualização) - RESTRITO A ADMINISTRADORES
-vehicleEndpoints.MapPut("/{id}", async (int id, CreateVehicleDto vehicleDto, ApplicationDbContext context) =>
-{
-    var vehicle = await context.Vehicles.FindAsync(id);
-    if (vehicle is null) return Results.NotFound();
 
-    vehicle.Make = vehicleDto.Make;
-    vehicle.Model = vehicleDto.Model;
-    vehicle.Year = vehicleDto.Year;
-    vehicle.LicensePlate = vehicleDto.LicensePlate;
-    await context.SaveChangesAsync();
+// PUT (Atualização) - RESTRITO A ADMINISTRADORES
+vehicleEndpoints.MapPut("/{id}", async (int id, CreateVehicleDto vehicleDto, IVehicleService service) =>
+{
+    var vehicle = await service.Update(id, vehicleDto);
+    if (vehicle is null) return Results.NotFound($"Veículo não encontrado com o id {id}.");
+
     return Results.Ok(vehicle);
 })
 .RequireAuthorization("Administrator"); // Somente administradores podem atualizar
 
 // DELETE (Remoção) - RESTRITO A ADMINISTRADORES
-vehicleEndpoints.MapDelete("/{id}", async (int id, ApplicationDbContext context) =>
+vehicleEndpoints.MapDelete("/{id}", async (int id, IVehicleService service) =>
 {
-    var vehicle = await context.Vehicles.FindAsync(id);
-    if (vehicle is null) return Results.NotFound();
-    
-    context.Vehicles.Remove(vehicle);
-    await context.SaveChangesAsync();
+    var vehicle = await service.Delete(id);
+    if (!vehicle) return Results.NotFound($"Veículo não encontrado com o id {id}.");
+
     return Results.NoContent();
 })
 .RequireAuthorization("Administrator"); // Somente administradores podem deletar
