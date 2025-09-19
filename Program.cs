@@ -6,8 +6,8 @@ using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using VehicleRegistryAPI.Services;
-using VehicleRegistryAPI.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -31,9 +31,48 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 
 // Adiciona serviços ao contêiner.
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+{
+    // Define uma política chamada "Administrator"
+    // que exige que o utilizador tenha o perfil ("Role") "Administrator".
+    options.AddPolicy("Administrator", policy =>
+        policy.RequireRole("Administrator"));
+});
+
+// Adiciona controladores (Controllers) ao projeto
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+
+// Configuração do Swagger para suportar autenticação JWT
+builder.Services.AddSwaggerGen(options =>
+{
+    // Adiciona a definição de segurança para JWT Bearer
+    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        In = ParameterLocation.Header,
+        Description = "Por favor, insira 'Bearer ' seguido do seu token",
+        Name = "Authorization",
+        Type = SecuritySchemeType.ApiKey,
+        Scheme = "Bearer"
+    });
+
+    // Garante que o Swagger envie o token em todas as requisições protegidas
+    options.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            new string[] {}
+        }
+    });
+});
+
+// Regista o TokenService para injeção de dependência
 builder.Services.AddScoped<TokenService>();
 
 var app = builder.Build();
@@ -56,33 +95,27 @@ if (app.Environment.IsDevelopment())
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Endpoint para buscar todos os veículos
-app.MapGet("/vehicles", async (ApplicationDbContext context) =>
+// Grupo para todos os endpoints de "/vehicles"
+// onde é exigida autorização para TODO o grupo.
+var vehicleEndpoints = app.MapGroup("/vehicles").RequireAuthorization();
+
+// GET (Leitura) - Acessível a qualquer utilizador autenticado (Editor ou Administrator)
+vehicleEndpoints.MapGet("/", async (ApplicationDbContext context) =>
 {
     var vehicles = await context.Vehicles.ToListAsync();
     return Results.Ok(vehicles);
 });
 
-// Endpoint para buscar um veículo por ID
-app.MapGet("/vehicles/{id}", async (int id, ApplicationDbContext context) =>
+// GET by ID (Leitura) - Acessível a qualquer utilizador autenticado (Editor ou Administrator)
+vehicleEndpoints.MapGet("/{id}", async (int id, ApplicationDbContext context) =>
 {
-    // FindAsync é otimizado para buscar pela chave primária
     var vehicle = await context.Vehicles.FindAsync(id);
-
-    if (vehicle is null)
-    {
-        // Retorna um 404 Not Found se o veículo não for encontrado
-        return Results.NotFound(new { Message = $"Veículo com ID {id}, não foi encontrado." });
-    }
-
-    // Retorna um 200 OK com o veículo encontrado
-    return Results.Ok(vehicle);
+    return vehicle is not null ? Results.Ok(vehicle) : Results.NotFound();
 });
 
-// Endpoint para criar um novo veículo
-app.MapPost("/vehicles", async (CreateVehicleDto vehicleDto, ApplicationDbContext context) =>
+// POST (Criação) - Acessível a qualquer utilizador autenticado (Editor ou Administrator)
+vehicleEndpoints.MapPost("/", async (CreateVehicleDto vehicleDto, ApplicationDbContext context) =>
 {
-    // Mapeamento manual do DTO para a Entidade Vehicle
     var vehicle = new Vehicle
     {
         Make = vehicleDto.Make,
@@ -90,49 +123,37 @@ app.MapPost("/vehicles", async (CreateVehicleDto vehicleDto, ApplicationDbContex
         Year = vehicleDto.Year,
         LicensePlate = vehicleDto.LicensePlate
     };
-
-    await context.Vehicles.AddAsync(vehicle); // Adiciona o novo veículo ao contexto do EF
-    await context.SaveChangesAsync(); // Salva as alterações na base de dados (executa o INSERT)
-
-    // Retorna um status 201 Created com a localização do novo recurso e o objeto criado
+    await context.Vehicles.AddAsync(vehicle);
+    await context.SaveChangesAsync();
     return Results.Created($"/vehicles/{vehicle.Id}", vehicle);
 });
 
-// Endpoint para atualizar um veículo existente
-app.MapPut("/vehicles/{id}", async (int id, CreateVehicleDto vehicleDto, ApplicationDbContext context) =>
+// PUT (Atualização) - RESTRITO A ADMINISTRADORES
+vehicleEndpoints.MapPut("/{id}", async (int id, CreateVehicleDto vehicleDto, ApplicationDbContext context) =>
 {
     var vehicle = await context.Vehicles.FindAsync(id);
-    if (vehicle is null)
-    {
-        return Results.NotFound(new { Message = $"Veículo com ID {id}, não foi encontrado." });
-    }
+    if (vehicle is null) return Results.NotFound();
 
-    // Atualiza as propriedades da entidade encontrada com os dados do DTO
     vehicle.Make = vehicleDto.Make;
     vehicle.Model = vehicleDto.Model;
     vehicle.Year = vehicleDto.Year;
     vehicle.LicensePlate = vehicleDto.LicensePlate;
-
-    await context.SaveChangesAsync(); // Salva as alterações (executa o UPDATE)
-
+    await context.SaveChangesAsync();
     return Results.Ok(vehicle);
-});
+})
+.RequireAuthorization("Administrator"); // Somente administradores podem atualizar
 
-// Endpoint para deletar um veículo
-app.MapDelete("/vehicles/{id}", async (int id, ApplicationDbContext context) =>
+// DELETE (Remoção) - RESTRITO A ADMINISTRADORES
+vehicleEndpoints.MapDelete("/{id}", async (int id, ApplicationDbContext context) =>
 {
     var vehicle = await context.Vehicles.FindAsync(id);
-    if (vehicle is null)
-    {
-        return Results.NotFound(new { Message = $"Veículo com ID {id}, não foi encontrado." });
-    }
-
-    context.Vehicles.Remove(vehicle); // Marca a entidade para deleção
-    await context.SaveChangesAsync(); // Salva as alterações (executa o DELETE)
-
-    // Retorna um status 204 No Content, o padrão para um delete bem-sucedido
+    if (vehicle is null) return Results.NotFound();
+    
+    context.Vehicles.Remove(vehicle);
+    await context.SaveChangesAsync();
     return Results.NoContent();
-});
+})
+.RequireAuthorization("Administrator"); // Somente administradores podem deletar
 
 app.MapPost("/login", async ([FromBody] LoginRequestDto loginDto, ApplicationDbContext context, TokenService tokenService) =>
 {
